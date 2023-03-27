@@ -5,9 +5,11 @@
   "displayName": "gptbrushes",
   "description": "Custom Code Brushes using GPT-4",
   "version": "1.0.0",
+  "repository": "https://github.com/aKzenT/gptbrushes/",
   "engines": {
     "vscode": "^1.76.0"
   },
+  "license": "MIT",
   "categories": [
     "Other"
   ],
