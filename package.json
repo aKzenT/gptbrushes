@@ -4,7 +4,7 @@
   "publisher": "AkzenteIT",
   "displayName": "gptbrushes",
   "description": "Custom Code Brushes using GPT-4",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "engines": {
     "vscode": "^1.76.0"
   },
@@ -38,7 +38,8 @@
         "command": "gptbrushes.updateApiKey",
         "title": "GPT-4 Brushes: Update OpenAI API Key",
         "category": "GPT-4 Brushes"
-      }],
+      }
+    ],
     "configuration": {
       "title": "GPT Brushes",
       "properties": {
@@ -77,12 +78,19 @@
                       "description": "Description of the variable"
                     }
                   },
-                  "required": ["name", "description"]
+                  "required": [
+                    "name",
+                    "description"
+                  ]
                 },
                 "description": "Variables to be used in the prompt"
               }
             },
-            "required": ["name", "icon", "prompt"]
+            "required": [
+              "name",
+              "icon",
+              "prompt"
+            ]
           },
           "default": [
             {
