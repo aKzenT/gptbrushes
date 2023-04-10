@@ -4,8 +4,12 @@
   "publisher": "AkzenteIT",
   "displayName": "GPT4 Brushes",
   "description": "Custom Code Brushes using GPT-4",
-  "version": "1.0.1",
-  "repository": "https://github.com/aKzenT/gptbrushes/",
+  "version": "1.1.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/aKzenT/gptbrushes/"
+  },  
+  "icon": "assets/icon.png",
   "engines": {
     "vscode": "^1.76.0"
   },
@@ -22,7 +26,7 @@
       "activitybar": [
         {
           "id": "gptbrushes",
-          "title": "GPT-4 Brushes",
+          "title": "Code Brushes",
           "icon": "assets/icon.svg"
         }
       ]
@@ -45,6 +49,11 @@
     "configuration": {
       "title": "GPT Brushes",
       "properties": {
+        "gptbrushes.openaiBasePath": {
+          "type": "string",
+          "default": "https://api.openai.com/v1",
+          "description": "OpenAI API base path to use for all requests"
+        },
         "gptbrushes.brushes": {
           "type": "array",
           "items": {
@@ -58,9 +67,18 @@
                 "type": "string",
                 "description": "Emoji to display as the brush's icon"
               },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "gpt-4",
+                  "javascript"
+                ],
+                "default": "gpt-4",
+                "description": "Provider of the brush. Either GPT-4 or a Node.js script."
+              },
               "prompt": {
                 "type": "string",
-                "description": "Prompt to be sent to the GPT-4 API for this brush"
+                "description": "Prompt to be sent to the provider for this brush"
               },
               "variables": {
                 "type": "array",
