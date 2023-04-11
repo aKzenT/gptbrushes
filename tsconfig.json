@@ -1,16 +1,19 @@
 {
 	"compilerOptions": {
 		"module": "commonjs",
-		"target": "ES2020",
-		"lib": [
-			"ES2020"
-		],
+		"target": "es2020",
+		"lib": ["es2020"],
+		"outDir": "out",
 		"sourceMap": true,
-		"rootDir": "src",
-		"strict": true   /* enable all strict type-checking options */
-		/* Additional Checks */
-		// "noImplicitReturns": true, /* Report error when not all code paths in function return a value. */
-		// "noFallthroughCasesInSwitch": true, /* Report errors for fallthrough cases in switch statement. */
-		// "noUnusedParameters": true,  /* Report errors on unused parameters. */
-	}
+    "esModuleInterop": true,
+		"strict": true,
+		"rootDir": "./src",
+    "baseUrl": "./src",
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "declaration": true,
+    "resolveJsonModule": true
+	},
+  "include": ["**/*.ts", "**/*.tsx"],
+	"exclude": ["node_modules", ".vscode-test", "out", "dist", "resources"]
 }
