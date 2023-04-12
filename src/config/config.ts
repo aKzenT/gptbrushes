@@ -454,15 +454,22 @@ const editorState: {
 } = { save: undefined, doc: undefined }
 
 export function getFormatter() {
-  const useJSON5 = vscode.workspace.getConfiguration('gptbrushes').get<boolean>('useJSON5', false)
+  const useJSON5 = vscode.workspace
+    .getConfiguration('AkzenteIT.gptbrushes')
+    .get<boolean>('useJSON5', false)
 
-  const stringify: (val: AnyConfigOpt, r: null, s: 2) => string = useJSON5
+  outputChannel.appendLine(`Using ${useJSON5 ? 'JSON5' : 'YAML'} formatter`)
+
+  const _stringify: (val: AnyConfigOpt, r?: null, s?: 2) => string = useJSON5
     ? JSON5.stringify
     : YAML.stringify
 
-  const parse: <T>(v: string) => T = useJSON5 ? JSON5.parse : YAML.parse
+  const stringify = (val: AnyConfigOpt, r?: null, s?: 2) => _stringify(val, null, 2)
 
-  return { stringify, parse }
+  const parse: <T>(v: string) => T = useJSON5 ? JSON5.parse : YAML.parse
+  const otherParser: <T>(v: string) => T = useJSON5 ? YAML.parse : JSON5.parse
+
+  return { stringify, parse, otherParser }
 }
 
 export async function saveFormattedConfig(
@@ -545,7 +552,7 @@ export function activateConfig(
         fs.writeFileSync(temporaryFilePath, stringContent)
       } catch (e) {
         void vscode.window.showErrorMessage(
-          `Error when stringifying YAML: ${JSON.stringify(e, null, 2)}`
+          `Error when stringifying config: ${JSON.stringify(e, null, 2)}`
         )
         return
       }
@@ -559,16 +566,21 @@ export function activateConfig(
         })
 
         editorState.save = async function () {
-          const newContentString = doc.getText()
+          let newContentString = doc.getText()
 
           let newContent: AnyConfigOpt
           try {
             newContent = await formatter.parse(newContentString)
           } catch (e) {
-            void vscode.window.showErrorMessage(
-              `Error when parsing YAML/JSON: ${JSON.stringify(e, null, 2)}`
-            )
-            return
+            try {
+              newContent = await formatter.otherParser(newContentString)
+              newContentString = formatter.stringify(newContent, null, 2)
+            } catch (e) {
+              void vscode.window.showErrorMessage(
+                `Error when parsing config: ${JSON.stringify(e, null, 2)}`
+              )
+              return
+            }
           }
 
           await saveFormattedConfig(storage, { source: newContent }, newContentString)

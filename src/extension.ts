@@ -11,7 +11,9 @@ import { activateUseBrush } from './brush/use-brush'
 export async function activate(context: vscode.ExtensionContext) {
   const storageManager = new StorageService(context.globalState)
 
-  const sync = vscode.workspace.getConfiguration('gptbrushes').get<boolean>('syncConfig', false)
+  const sync = vscode.workspace
+    .getConfiguration('AkzenteIT.gptbrushes')
+    .get<boolean>('syncConfig', false)
   if (sync) {
     context.globalState.setKeysForSync([
       'gptbrushes.config.brushes',
