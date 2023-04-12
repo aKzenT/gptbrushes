@@ -38,7 +38,7 @@ export function getRequestOptions(
   const requestOptions: ConfigRequestOptions = {
     type: type,
     model: cfg.model ?? 'gpt-4',
-    max_tokens: cfg.max_tokens ?? Infinity,
+    max_tokens: cfg.max_tokens && cfg.max_tokens > 0 ? cfg.max_tokens : Infinity,
     temperature: cfg.temperature ?? 0.8,
     top_p: cfg.top_p ?? 1,
     n: cfg.n,
@@ -354,10 +354,11 @@ export async function deleteCategory(
   }
 }
 
-export async function askForVariablesAndReplacePrompt(
-  prompt: string,
+export async function askForVariables(
   variables?: ConfigBrushVariable[]
-) {
+): Promise<(ConfigBrushVariable & { value: string })[] | undefined> {
+  const outputVariables: (ConfigBrushVariable & { value: string })[] = []
+
   if (variables) {
     for (const variable of variables) {
       let input = await vscode.window.showInputBox({
@@ -366,20 +367,24 @@ export async function askForVariablesAndReplacePrompt(
       })
 
       if (input === undefined) {
-        return ''
+        return undefined
       }
 
       if (input === '') {
         if (variable.defaultValue === undefined) {
-          return ''
+          return undefined
         }
         input = variable.defaultValue
       }
 
-      prompt = prompt.replace(`{{${variable.name}}}`, input)
+      outputVariables.push({ ...variable, value: input })
     }
   }
-  return prompt
+  if (!outputVariables.length) {
+    return undefined
+  }
+
+  return outputVariables
 }
 
 type AnyConfigOpt = ConfigBrush | ConfigBrushCategory | ConfigRequestOptions | undefined

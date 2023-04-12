@@ -45,7 +45,7 @@ export const requestOptions: ConfigRequestOptions = {
   type: 'chat',
   model: 'gpt-4',
   temperature: 0.7,
-  max_tokens: Infinity,
+  max_tokens: -1,
 }
 
 export const brushes: (Omit<ConfigBrush, 'category'> & { category?: string })[] = [
@@ -53,7 +53,7 @@ export const brushes: (Omit<ConfigBrush, 'category'> & { category?: string })[] 
     name: 'Add Tests',
     icon: 'beaker',
     prompt:
-      "Please add tests to the code provided by the user. Answer directly with the test cases. Do not use a markdown code block. You can add some comments if it's not immediately clear what the test does. Write the tests for the code as it is, not for the code you would write. Write the tests for the {{framework}} framework.",
+      "Assistant adds tests to the code provided by the user. Answers directly with the test cases. Does not use a markdown code block. Can add some comments if it's not immediately clear what the test does. Write the tests for the code as it is, not for the code the assistant would write. Write the tests for the {{framework}} framework.",
     variables: [
       {
         name: 'framework',
@@ -103,6 +103,34 @@ export const brushes: (Omit<ConfigBrush, 'category'> & { category?: string })[] 
     icon: 'symbol-namespace',
     category: 'Refactor',
     prompt: 'Improve the user code by refactoring it.',
+  },
+  {
+    name: 'Light improvement',
+    icon: 'symbol-namespace',
+    category: 'Refactor',
+    prompt:
+      'Assistant is a large language model trained by OpenAI for {{language}} code generation, among other tasks. Right now the assistant is just doing code generation, more specifically refactoring code without changing the overall logic, and is very good at this. The assistant only outputs valid code, and answer directly with the code (and potentially comments) and nothing else. The assistant will never write anything in the response that the user will not be able to compile or run. The assistant will prefer to not change code, but if it is absolutely necessary the assistant will also comment on the changes and write why it was necessary. The assistant keeps in mind that the user does not provide all of the code at once, but just a window of it, it because of this makes sure to not remove things that would make sense if the assistant saw the rest of the code.',
+    messages: [
+      {
+        role: 'user',
+        content:
+          "Can you improve this code and answer only with the improved code (including comments)? I would want to prioritize readability and robustness, and also if possible improve the performance and structure:\n```\n{{user_code}}```. Do not include code that won't run in your answer, including markdown.",
+      },
+    ],
+    requestOptions: {
+      type: 'chat',
+      model: 'gpt-4',
+      max_tokens: -1,
+      temperature: 0.7,
+      top_p: 1,
+    },
+    variables: [
+      {
+        name: 'language',
+        description: 'The programming language.',
+      },
+    ],
+    contextValue: 'brush',
   },
   {
     name: 'Custom Brush',

@@ -1,5 +1,5 @@
 import vscode from 'vscode'
-import { ConfigBrush, askForVariablesAndReplacePrompt, getBrushes } from '../config/config'
+import { ConfigBrush, askForVariables, getBrushes } from '../config/config'
 import { outputChannel } from '../util/channel'
 import { getIdFromItemSource } from './brush-tree'
 import { getApiKey, requestCompletion } from '../openai-api'
@@ -17,13 +17,18 @@ export function getSelectionRange(selection: vscode.Selection) {
 export function activateUseBrush(
   storage: StorageService,
   context: vscode.ExtensionContext,
-  editor: vscode.TextEditor,
   sel: SelectionHelper
 ) {
+  const editor = vscode.window.activeTextEditor
+  if (!editor) {
+    outputChannel.appendLine('Could not get editor')
+    return
+  }
+
   context.subscriptions.push(
     vscode.commands.registerCommand('gptbrushes.useBrush', async (id: string) => {
       try {
-        const originalSelection = editor.selection
+        const originalSelections = editor.selections
         let selection = editor.selection
 
         const brushToUse = getBrushes(storage).find((b: ConfigBrush) => {
@@ -107,21 +112,19 @@ export function activateUseBrush(
 
         outputChannel.appendLine(`Using prompts: ${JSON.stringify(prompts, null, 2)}`)
 
+        const variablesRes = await askForVariables(variables)
+
         for (const prompt of prompts) {
           if (['system', 'assistant', 'user'].includes(prompt.role) && prompt.content) {
             if (prompt.role === 'user') {
               prompt.content = prompt.content.replace('{{user_code}}', selectedText)
             }
-          }
 
-          const variableRes = await askForVariablesAndReplacePrompt(prompt.content, variables)
-          if (!variableRes) {
-            await vscode.window.showErrorMessage(
-              'Something went wrong when replacing variables in the prompt.'
-            )
-          }
-          if (variableRes) {
-            prompt.content = variableRes
+            if (variablesRes) {
+              for (const v of variablesRes) {
+                prompt.content = prompt.content.replace(`{{${v.name}}}`, v.value)
+              }
+            }
           }
         }
 
@@ -202,9 +205,9 @@ export function activateUseBrush(
               outputChannel.appendLine(`Completion: ${completion}`)
 
               outputChannel.appendLine(
-                'Original selection:' + JSON.stringify(originalSelection, null, 2)
+                'Original selection:' + JSON.stringify(originalSelections[0], null, 2)
               )
-              await sel.insertOrReplace(originalSelection, completion)
+              await sel.insertOrReplace(originalSelections[0], completion)
 
               progress.report({ message: 'Brush applied.', increment: 100 })
 

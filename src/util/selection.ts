@@ -27,7 +27,15 @@ export const SavedSelectionEvents: {
   },
 }
 
-async function _saveSelection(editor: vscode.TextEditor, storage: StorageService): Promise<void> {
+async function _saveSelection(storage: StorageService): Promise<void> {
+  const editor = vscode.window.activeTextEditor
+  if (!editor) {
+    outputChannel.appendLine('Could not get editor')
+    return
+  }
+  outputChannel.appendLine(
+    `Selection saved: ${editor.document.getText(getSelectionRange(editor.selection))}`
+  )
   if (!getSelectionRange(editor.selection).isEmpty) {
     await storage.setValue('gptbrushes.current_selection', editor.selection)
     SavedSelectionEvents.markSelectionChange(editor.selection)
@@ -45,22 +53,24 @@ function _getSavedSelection(storage: StorageService): undefined | vscode.Selecti
   return savedSelection
 }
 
-async function _replaceSelection(
-  editor: vscode.TextEditor,
-  selection: vscode.Selection,
-  newText: string
-): Promise<void> {
+async function _replaceSelection(selection: vscode.Selection, newText: string): Promise<void> {
+  const editor = vscode.window.activeTextEditor
+  if (!editor) {
+    outputChannel.appendLine('Could not get editor')
+    return
+  }
   // const document = editor.document
   await editor.edit((editBuilder) => {
     editBuilder.replace(selection, newText)
   })
 }
 
-async function _insertAtCursor(
-  editor: vscode.TextEditor,
-  selection: vscode.Selection,
-  newText: string
-): Promise<void> {
+async function _insertAtCursor(selection: vscode.Selection, newText: string): Promise<void> {
+  const editor = vscode.window.activeTextEditor
+  if (!editor) {
+    outputChannel.appendLine('Could not get editor')
+    return
+  }
   // const document = editor.document
   await editor.edit((editBuilder) => {
     editBuilder.insert(selection.start, newText)
@@ -92,28 +102,27 @@ export interface SelectionHelper {
 }
 export function activateSelectionHelper(
   context: vscode.ExtensionContext,
-  editor: vscode.TextEditor,
   storage: StorageService
 ): SelectionHelper {
   context.subscriptions.push(
-    vscode.commands.registerCommand('gptbrushes.setSelection', () => {
+    vscode.commands.registerCommand('gptbrushes.saveSelection', () => {
       outputChannel.appendLine('saving selection')
-      void _saveSelection(editor, storage)
+      void _saveSelection(storage)
     })
   )
 
   return {
-    saveSelection: () => _saveSelection(editor, storage),
+    saveSelection: () => _saveSelection(storage),
     getSavedSelection: () => _getSavedSelection(storage),
     replaceSelection: async (selection: vscode.Selection, newText: string) => {
-      await _replaceSelection(editor, selection, newText)
+      await _replaceSelection(selection, newText)
       return Promise.resolve()
     },
     insertOrReplace: async (selection: vscode.Selection, newText: string): Promise<void> => {
       if (selection.isEmpty) {
-        await _insertAtCursor(editor, selection, newText)
+        await _insertAtCursor(selection, newText)
       } else {
-        await _replaceSelection(editor, selection, newText)
+        await _replaceSelection(selection, newText)
       }
       return Promise.resolve()
     },

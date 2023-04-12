@@ -63,6 +63,7 @@ export class BrushTreeDataProvider implements vscode.TreeDataProvider<AnyBrushTr
       const val = v as ConfigBrushCategory & {
         contextValue: string
       }
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
       if (!val.contextValue) {
         val.contextValue = 'category'
       }
@@ -78,7 +79,7 @@ export class BrushTreeDataProvider implements vscode.TreeDataProvider<AnyBrushTr
     )
     this.rootItems.push(
       new BrushTreeItem(
-        { name: 'Set selection', contextValue: 'setSelection' },
+        { name: 'Save selection', contextValue: 'saveSelection' },
         this.rootItems.length
       )
     )
@@ -101,9 +102,6 @@ export class BrushTreeDataProvider implements vscode.TreeDataProvider<AnyBrushTr
     })
     this.items = [...this.categories, ...this.brushes]
 
-    //if (vscode.workspace.workspaceFolders) {
-    //this.items = []
-    //this.read_directory(vscode.workspace.workspaceFolders[0].uri.fsPath);
     // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
     this._onDidChangeTreeData.fire(undefined as any)
 
@@ -112,10 +110,8 @@ export class BrushTreeDataProvider implements vscode.TreeDataProvider<AnyBrushTr
       this.badBrushes = []
       this.badCategories = []
     }
-    //}
   }
 
-  // we need to implement getTreeItem to receive items from our tree view
   public getTreeItem(element: AnyBrushTreeItem): vscode.TreeItem | Thenable<vscode.TreeItem> {
     switch (element.contextValue) {
       case 'category':
@@ -151,7 +147,7 @@ export class BrushTreeDataProvider implements vscode.TreeDataProvider<AnyBrushTr
           ],
         }
         break
-      case 'setSelection':
+      case 'saveSelection':
         {
           const selection = this.storage.getValue('gptbrushes.current_selection')
           element.iconPath =
@@ -159,8 +155,8 @@ export class BrushTreeDataProvider implements vscode.TreeDataProvider<AnyBrushTr
               ? new vscode.ThemeIcon('list-selection')
               : new vscode.ThemeIcon('pass-filled')
           element.command = {
-            command: 'gptbrushes.setSelection',
-            title: 'Set selection',
+            command: 'gptbrushes.saveSelection',
+            title: 'Save selection',
           }
         }
         break
@@ -241,8 +237,6 @@ class BrushTreeItem<T extends BrushTreeItemSource>
     if (source.category) {
       this.category = source.category
     }
-
-    outputChannel.appendLine(`source: ${JSON.stringify(source, null, 2)}`)
 
     this.contextValue = source.contextValue
     this.tooltip = source.prompt ? source.prompt : undefined

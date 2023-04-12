@@ -29,9 +29,9 @@ export async function activate(context: vscode.ExtensionContext) {
     return
   }
 
-  const sel = activateSelectionHelper(context, editor, storageManager)
+  const sel = activateSelectionHelper(context, storageManager)
 
-  activateUseBrush(storageManager, context, editor, sel)
+  activateUseBrush(storageManager, context, sel)
 
   const treeView = vscode.window.createTreeView('gptbrushes.brushList', {
     treeDataProvider: brushTreeDataProvider,
