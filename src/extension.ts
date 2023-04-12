@@ -11,7 +11,14 @@ import { activateUseBrush } from './brush/use-brush'
 export async function activate(context: vscode.ExtensionContext) {
   const storageManager = new StorageService(context.globalState)
 
-  context.globalState.setKeysForSync(['gptbrushes.config', 'gptbrushes.apiKey'])
+  const sync = vscode.workspace.getConfiguration('gptbrushes').get<boolean>('syncConfig', false)
+  if (sync) {
+    context.globalState.setKeysForSync([
+      'gptbrushes.config.brushes',
+      'gptbrushes.config.categories',
+      'gptbrushes.config.requestOptions',
+    ])
+  }
 
   const config = await getConfig(storageManager)
   const brushTreeDataProvider = activateConfig(context, storageManager) // registers edit and delete commands

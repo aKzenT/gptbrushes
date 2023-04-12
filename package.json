@@ -138,20 +138,17 @@
     "configuration": {
       "title": "GPT Brushes",
       "properties": {
-        "syncAPIKey": {
-          "type": "boolean",
-          "default": false,
-          "description": "Also sync OpenAI API Key if syncSettings is enabled"
-        },
-        "syncSettings": {
+        "syncConfig": {
+          "title": "Sync brushes and categories",
           "type": "boolean",
           "default": true,
-          "description": "Sync VSCode Settings"
+          "description": "Sync stored brushes and categories using your VSCode account"
         },
         "useJSON5": {
+          "title": "Use JSON 5",
           "type": "boolean",
           "default": false,
-          "description": "Use JSON5 instead of YAML for configuration files"
+          "description": "Use JSON 5 instead of YAML for configuration files"
         }
       }
     }
