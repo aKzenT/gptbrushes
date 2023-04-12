@@ -138,13 +138,13 @@
     "configuration": {
       "title": "GPT Brushes",
       "properties": {
-        "syncConfig": {
+        "gptbrushes.syncConfig": {
           "title": "Sync brushes and categories",
           "type": "boolean",
           "default": true,
           "description": "Sync stored brushes and categories using your VSCode account"
         },
-        "useJSON5": {
+        "gptbrushes.useJSON5": {
           "title": "Use JSON 5",
           "type": "boolean",
           "default": false,

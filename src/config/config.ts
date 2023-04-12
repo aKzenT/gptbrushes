@@ -454,9 +454,7 @@ const editorState: {
 } = { save: undefined, doc: undefined }
 
 export function getFormatter() {
-  const useJSON5 = vscode.workspace
-    .getConfiguration('AkzenteIT.gptbrushes')
-    .get<boolean>('useJSON5', false)
+  const useJSON5 = vscode.workspace.getConfiguration('gptbrushes').get<boolean>('useJSON5', false)
 
   outputChannel.appendLine(`Using ${useJSON5 ? 'JSON5' : 'YAML'} formatter`)
 
@@ -469,7 +467,7 @@ export function getFormatter() {
   const parse: <T>(v: string) => T = useJSON5 ? JSON5.parse : YAML.parse
   const otherParser: <T>(v: string) => T = useJSON5 ? YAML.parse : JSON5.parse
 
-  return { stringify, parse, otherParser }
+  return { stringify, parse, otherParser, formatter: useJSON5 ? 'json5' : 'yaml' }
 }
 
 export async function saveFormattedConfig(
@@ -501,26 +499,46 @@ export function activateConfig(
   const editConfigCommand = vscode.commands.registerCommand(
     'gptbrushes.config.edit',
     (key: { source: AnyConfigOpt }) => {
-      const temporaryFilePath = path.join(__dirname, '.gptbrushtemp.yaml')
+      const formatter = getFormatter()
+
+      const temporaryFilePath = path.join(__dirname, `.gptbrushtemp.${formatter.formatter}`)
 
       outputChannel.appendLine(
         `Should save config soon, Editor state: ${JSON.stringify(editorState, null, 2)})`
       )
 
-      const formatter = getFormatter()
+      const tryParse = (content: string | undefined): { parsed: AnyConfigOpt; text: string } => {
+        let parsed: AnyConfigOpt
+        try {
+          parsed = formatter.parse(content ?? '')
+        } catch (e) {
+          parsed = formatter.otherParser(content ?? '')
+          content = formatter.stringify(parsed)
+        }
+        return { parsed: parsed, text: content ?? '' }
+      }
 
-      // If the values in our formatted config are the same as the current config
-      // then we can use the formatted config as the current config
       const { content, saveContent } = getConfigFromKey<AnyConfigOpt>(key, storage)
       let stringContent: string
       const savedStringContent = loadFormattedConfig(storage, { source: content })
-      if (
-        savedStringContent &&
-        JSON.stringify(formatter.parse(savedStringContent)) === JSON.stringify(content)
-      ) {
-        stringContent = savedStringContent
-      } else {
-        stringContent = formatter.stringify(content, null, 2)
+
+      // If the values in our formatted config are the same as the current config
+      // then we can use the formatted config as the current config
+
+      try {
+        const _formatted = tryParse(savedStringContent)
+
+        if (
+          _formatted.text === savedStringContent &&
+          JSON.stringify(_formatted.parsed) === JSON.stringify(content)
+        ) {
+          stringContent = savedStringContent
+        } else {
+          stringContent = formatter.stringify(content)
+        }
+      } catch (e) {
+        outputChannel.appendLine(`Error: ${JSON.stringify(e, null, 2)}`)
+        return
       }
 
       const hasMaxTokens = (v: unknown): v is { max_tokens: number } => {
@@ -566,21 +584,18 @@ export function activateConfig(
         })
 
         editorState.save = async function () {
-          let newContentString = doc.getText()
+          const newContentString = doc.getText()
 
           let newContent: AnyConfigOpt
+
           try {
-            newContent = await formatter.parse(newContentString)
+            const _formatted = tryParse(newContentString)
+            newContent = _formatted.parsed
           } catch (e) {
-            try {
-              newContent = await formatter.otherParser(newContentString)
-              newContentString = formatter.stringify(newContent, null, 2)
-            } catch (e) {
-              void vscode.window.showErrorMessage(
-                `Error when parsing config: ${JSON.stringify(e, null, 2)}`
-              )
-              return
-            }
+            void vscode.window.showErrorMessage(
+              `Error when parsing config: ${JSON.stringify(e, null, 2)}`
+            )
+            return
           }
 
           await saveFormattedConfig(storage, { source: newContent }, newContentString)
