@@ -84,7 +84,7 @@ export async function getConfig(storage: StorageService): Promise<Config> {
 
   let brushes = getBrushes(storage, categories)
   if (brushes.length === 0) {
-    brushes = parseBrushes(defaults.brushes, categories)
+    brushes = parseBrushes(defaults.brushes)
     await storage.setValue('gptbrushes.config.brushes', brushes)
   }
 
@@ -116,21 +116,10 @@ export function getBrushes(
     outputChannel.appendLine('GPT-4 Brushes: No brushes defined in the configuration.')
   }
 
-  return parseBrushes(brushes, categories ?? getCategories(storage))
+  return parseBrushes(brushes)
 }
 
-function parseBrushes(
-  brushes: unknown[] | undefined | null,
-  categoriesSource: ConfigBrushCategory[]
-): ConfigBrush[] {
-  let categories: ConfigBrushCategory[]
-
-  if (Array.isArray(categoriesSource)) {
-    categories = categoriesSource
-  } else {
-    categories = getCategories(categoriesSource)
-  }
-
+function parseBrushes(brushes: unknown[] | undefined | null): ConfigBrush[] {
   if (!Array.isArray(brushes) || !brushes.length) {
     return []
   }
@@ -150,15 +139,6 @@ function parseBrushes(
     if (!brush.icon) {
       parsed.icon = 'symbol-namespace'
     }
-
-    //if (!brush.category || !categories.find((c) => c.name === brush.category)) {
-    //if (!brush.category) {
-    //void vscode.window.showWarningMessage(
-    //  `GPT-4 Brushes: Brush "${brush.name}" has a non-existent category: "${brush.category}".`
-    //)
-    //}
-    //parsed.category = 'Uncategorized'
-    //}
 
     parsed = { ...brush, ...parsed } // override brush values with parsed brush values
 
@@ -180,7 +160,7 @@ export async function saveBrush(
   if (!categories) {
     categories = getCategories(storage)
   }
-  const parsedBrushOrEmpty: ConfigBrush[] | ConfigBrush = parseBrushes([brush], categories)
+  const parsedBrushOrEmpty: ConfigBrush[] | ConfigBrush = parseBrushes([brush])
 
   if (!parsedBrushOrEmpty.length) {
     void vscode.window.showWarningMessage(`GPT-4 Brushes: Brush "${brush.name}" is invalid.`)

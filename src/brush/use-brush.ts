@@ -1,5 +1,5 @@
 import vscode from 'vscode'
-import { ConfigBrush, askForVariables, getBrushes } from '../config/config'
+import { ConfigBrush, ConfigBrushVariable, askForVariables, getBrushes } from '../config/config'
 import { outputChannel } from '../util/channel'
 import { getIdFromItemSource } from './brush-tree'
 import { getApiKey, requestCompletion } from '../openai-api'
@@ -91,10 +91,12 @@ export function activateUseBrush(
 
         const variables = brushToUse.variables
 
-        const prompts = [
-          { role: 'system', content: brushToUse.prompt },
-          ...(brushToUse.messages ?? []),
-        ] as { role: 'system' | 'assistant' | 'user'; content: string }[]
+        const prompts = JSON.parse(
+          JSON.stringify([
+            { role: 'system', content: brushToUse.prompt },
+            ...(brushToUse.messages ?? []),
+          ])
+        ) as { role: 'system' | 'assistant' | 'user'; content: string }[]
 
         if (!prompts[0].content) {
           prompts.shift()
