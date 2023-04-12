@@ -5,6 +5,23 @@ import { StorageService } from 'util/storage'
 import fs from 'fs'
 import * as defaults from './config-defaults'
 import path from 'path'
+
+// We should add config option to switch between these maybe?
+import YAML from 'yaml'
+import JSON5 from 'json5'
+// eslint-disable-next-line import/no-extraneous-dependencies
+//import JSON5 from 'json5'
+
+export function getKeyFromSource(_key: string | { source: AnyConfigOpt }): string {
+  let key = ''
+  if (typeof _key !== 'string') {
+    key = getIdFromItemSource(_key.source as BrushTreeItemSource)
+  } else {
+    key = _key
+  }
+  return key
+}
+
 import {
   getIdFromItemSource,
   BrushTreeItemSource,
@@ -380,13 +397,7 @@ function getConfigFromKey<T extends AnyConfigOpt>(
       content: T | undefined
       saveContent: (saveContent: T) => Promise<void | { success: boolean }>
     } {
-  let key: string
-
-  if (typeof _key !== 'string') {
-    key = getIdFromItemSource(_key.source as BrushTreeItemSource)
-  } else {
-    key = _key
-  }
+  const key = getKeyFromSource(_key)
 
   const type = key.split('.')[0]
   if (type !== 'category' && type !== 'brush' && type !== 'requestOptions') {
@@ -442,6 +453,36 @@ const editorState: {
   doc?: unknown
 } = { save: undefined, doc: undefined }
 
+export function getFormatter() {
+  const useJSON5 = vscode.workspace.getConfiguration('gptbrushes').get<boolean>('useJSON5', false)
+
+  const stringify: (val: AnyConfigOpt, r: null, s: 2) => string = useJSON5
+    ? JSON5.stringify
+    : YAML.stringify
+
+  const parse: <T>(v: string) => T = useJSON5 ? JSON5.parse : YAML.parse
+
+  return { stringify, parse }
+}
+
+export async function saveFormattedConfig(
+  storage: StorageService,
+  _key: string | { source: AnyConfigOpt },
+  value: string
+) {
+  const key = getKeyFromSource(_key)
+
+  await storage.setValue(key + '.formatted', value)
+}
+
+export function loadFormattedConfig(
+  storage: StorageService,
+  _key: string | { source: AnyConfigOpt }
+): string | undefined {
+  const key = getKeyFromSource(_key)
+  return storage.getValue<string>(key + '.formatted')
+}
+
 export function activateConfig(
   context: vscode.ExtensionContext,
   storage: StorageService,
@@ -453,13 +494,42 @@ export function activateConfig(
   const editConfigCommand = vscode.commands.registerCommand(
     'gptbrushes.config.edit',
     (key: { source: AnyConfigOpt }) => {
-      const temporaryFilePath = path.join(__dirname, '.gptbrushtemp.json')
+      const temporaryFilePath = path.join(__dirname, '.gptbrushtemp.yaml')
 
       outputChannel.appendLine(
-        `Should save config soon, old state: ${JSON.stringify(editorState)})`
+        `Should save config soon, Editor state: ${JSON.stringify(editorState, null, 2)})`
       )
 
+      const formatter = getFormatter()
+
+      // If the values in our formatted config are the same as the current config
+      // then we can use the formatted config as the current config
       const { content, saveContent } = getConfigFromKey<AnyConfigOpt>(key, storage)
+      let stringContent: string
+      const savedStringContent = loadFormattedConfig(storage, { source: content })
+      if (
+        savedStringContent &&
+        JSON.stringify(formatter.parse(savedStringContent)) === JSON.stringify(content)
+      ) {
+        stringContent = savedStringContent
+      } else {
+        stringContent = formatter.stringify(content, null, 2)
+      }
+
+      const hasMaxTokens = (v: unknown): v is { max_tokens: number } => {
+        if (!!v && typeof v === 'object' && 'max_tokens' in Object.keys(v)) {
+          return true
+        }
+        return false
+      }
+
+      if (hasMaxTokens(content)) {
+        if (content.max_tokens === Infinity) {
+          content.max_tokens = -1
+        } else if (String(content.max_tokens) === 'Infinity') {
+          content.max_tokens = -1
+        }
+      }
 
       // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
       if (!content || !saveContent) {
@@ -471,8 +541,14 @@ export function activateConfig(
         return
       }
 
-      fs.writeFileSync(temporaryFilePath, JSON.stringify(content, null, 2))
-
+      try {
+        fs.writeFileSync(temporaryFilePath, stringContent)
+      } catch (e) {
+        void vscode.window.showErrorMessage(
+          `Error when stringifying YAML: ${JSON.stringify(e, null, 2)}`
+        )
+        return
+      }
       const openPath = vscode.Uri.file(temporaryFilePath)
 
       void vscode.workspace.openTextDocument(openPath).then((doc) => {
@@ -484,12 +560,33 @@ export function activateConfig(
 
         editorState.save = async function () {
           const newContentString = doc.getText()
-          const newContent = JSON.parse(newContentString) as AnyConfigOpt
+
+          let newContent: AnyConfigOpt
+          try {
+            newContent = await formatter.parse(newContentString)
+          } catch (e) {
+            void vscode.window.showErrorMessage(
+              `Error when parsing YAML/JSON: ${JSON.stringify(e, null, 2)}`
+            )
+            return
+          }
+
+          await saveFormattedConfig(storage, { source: newContent }, newContentString)
+
           void saveContent(newContent)
           await doc.save()
           setTimeout(() => {
             outputChannel.appendLine(
-              `Should have closed editor by now. Old state: ${JSON.stringify(editorState)})`
+              `Should have closed editor by now.
+
+              Old editor state:
+              ${JSON.stringify(editorState, null, 2)})
+
+              Old config:
+              ${JSON.stringify(content, null, 2)})
+
+              New:
+              ${JSON.stringify(newContent, null, 2)})`
             )
             void vscode.commands.executeCommand('workbench.action.closeActiveEditor')
             fs.unlink(temporaryFilePath, (err) => {
@@ -503,7 +600,10 @@ export function activateConfig(
   )
 
   vscode.workspace.onWillSaveTextDocument((save_event) => {
-    if (save_event.document == editorState.doc && save_event.reason == 1) {
+    if (
+      save_event.document == editorState.doc &&
+      save_event.reason == vscode.TextDocumentSaveReason.Manual
+    ) {
       if (typeof editorState.save === 'function') {
         outputChannel.appendLine(`Should save config: ${JSON.stringify(editorState)})`)
         void editorState.save()

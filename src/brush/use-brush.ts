@@ -119,12 +119,12 @@ export function activateUseBrush(
         for (const prompt of prompts) {
           if (['system', 'assistant', 'user'].includes(prompt.role) && prompt.content) {
             if (prompt.role === 'user') {
-              prompt.content = prompt.content.replace('{{user_code}}', selectedText)
+              prompt.content = prompt.content.replace(/{{user_code}}/g, selectedText)
             }
 
             if (variablesRes) {
               for (const v of variablesRes) {
-                prompt.content = prompt.content.replace(`{{${v.name}}}`, v.value)
+                prompt.content = prompt.content.replace(new RegExp(`/{{${v.name}}}/g`), v.value)
               }
             }
           }

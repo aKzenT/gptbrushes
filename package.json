@@ -17,6 +17,9 @@
   "categories": [
     "Other"
   ],
+  "extensionDependencies": [
+    "KatjanaKosic.vscode-json5"
+  ],
   "activationEvents": [
     "onCommand:extension.gptbrushes"
   ],
@@ -144,6 +147,11 @@
           "type": "boolean",
           "default": true,
           "description": "Sync VSCode Settings"
+        },
+        "useJSON5": {
+          "type": "boolean",
+          "default": false,
+          "description": "Use JSON5 instead of YAML for configuration files"
         }
       }
     }
@@ -166,8 +174,8 @@
     "@types/mocha": "^10.0.1",
     "@types/node": "^18.15.11",
     "@types/vscode": "^1.77.0",
-    "@typescript-eslint/eslint-plugin": "^5.57.1",
-    "@typescript-eslint/parser": "^5.57.1",
+    "@typescript-eslint/eslint-plugin": "^5.58.0",
+    "@typescript-eslint/parser": "^5.58.0",
     "@vscode/test-electron": "^2.3.0",
     "axios": "^1.3.5",
     "c8": "^7.13.0",
@@ -188,6 +196,7 @@
   },
   "dependencies": {
     "json5": "^2.2.3",
-    "openai": "^3.2.1"
+    "openai": "^3.2.1",
+    "yaml": "^2.2.1"
   }
 }

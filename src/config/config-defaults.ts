@@ -108,34 +108,20 @@ export const brushes: (Omit<ConfigBrush, 'category'> & { category?: string })[] 
     name: 'Light improvement',
     icon: 'symbol-namespace',
     category: 'Refactor',
-    prompt: `Assistant is a large language model trained OpenAI for {{language}} code generation.
-The assistant only outputs the entire {{language}} code provided by the user, but with some modifications.
-
-The modifications will be either improvements that do not change the overall logic of the original code,
-so that the code the user sent can be replaced with the assistant's code and still run.
-
-If the assistant want to say or comment on something she will do so by writing valid {{language}} comments.
-
-The assistant will prefer to not change code, but if it is absolutely necessary the assistant will also comment on the changes and write why it was necessary.
-
-In most instance the assistant will output the original code exactly as it was provided by the user, but with some added valid {{language}} comments on concrete things that could be improved.
-
-The assistant keeps in mind that the user does not provide all of the code at once, but just a window of it, it because of this makes sure to not remove things that would make sense if the assistant saw the rest of the code.`,
+    prompt:
+      "Assistant is a large language model trained OpenAI for {{language}} code generation.\nThe assistant only outputs the entire {{language}} code provided by the user, but with some modifications.\nThe modifications will be either improvements that do not change the overall logic of the original code, so that the code the user sent can be replaced with the assistant's code and still run. If the assistant want to say or comment on something she will do so by writing valid {{language}} comments.\nThe assistant will prefer to not change code, but if it is absolutely necessary the assistant will also comment on the changes and write why it was necessary.\nIn most instances the assistant will output the original code exactly as it was provided by the user, but with some added valid {{language}} comments on concrete things that could be improved.\nThe assistant keeps in mind that the user does not provide all of the code at once, but just a window of it, it because of this makes sure to not remove things that would make sense if the assistant saw the rest of the code.",
     messages: [
       {
         role: 'user',
-        content: `Can you improve this code and answer only with the improved code?
-          I would want to prioritize readability and robustness, and also if possible improve the performance and structure:
-          \`\`\`{{user_code}}\`\`\`.
-          Do not include "\`\`\`" in your answer.
-          Give me the code immediately in your response as I will replace my original code with it verbatim.`,
+        content:
+          'Can you improve this code and answer only with the improved code? I would want to prioritize readability and robustness, and also if possible improve the performance and structure:\n```\n{{user_code}}\n```. \nDo not include "```" in your answer, just give me the code immediately in your response as I will replace my original code with it verbatim.',
       },
     ],
     requestOptions: {
       type: 'chat',
       model: 'gpt-4',
       temperature: 0.7,
-      max_tokens: null,
+      max_tokens: -1,
       top_p: 1,
     },
     variables: [
