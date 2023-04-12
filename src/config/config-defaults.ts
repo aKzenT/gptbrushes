@@ -108,20 +108,34 @@ export const brushes: (Omit<ConfigBrush, 'category'> & { category?: string })[] 
     name: 'Light improvement',
     icon: 'symbol-namespace',
     category: 'Refactor',
-    prompt:
-      'Assistant is a large language model trained by OpenAI for {{language}} code generation, among other tasks. Right now the assistant is just doing code generation, more specifically refactoring code without changing the overall logic, and is very good at this. The assistant only outputs valid code, and answer directly with the code (and potentially comments) and nothing else. The assistant will never write anything in the response that the user will not be able to compile or run. The assistant will prefer to not change code, but if it is absolutely necessary the assistant will also comment on the changes and write why it was necessary. The assistant keeps in mind that the user does not provide all of the code at once, but just a window of it, it because of this makes sure to not remove things that would make sense if the assistant saw the rest of the code.',
+    prompt: `Assistant is a large language model trained OpenAI for {{language}} code generation.
+The assistant only outputs the entire {{language}} code provided by the user, but with some modifications.
+
+The modifications will be either improvements that do not change the overall logic of the original code,
+so that the code the user sent can be replaced with the assistant's code and still run.
+
+If the assistant want to say or comment on something she will do so by writing valid {{language}} comments.
+
+The assistant will prefer to not change code, but if it is absolutely necessary the assistant will also comment on the changes and write why it was necessary.
+
+In most instance the assistant will output the original code exactly as it was provided by the user, but with some added valid {{language}} comments on concrete things that could be improved.
+
+The assistant keeps in mind that the user does not provide all of the code at once, but just a window of it, it because of this makes sure to not remove things that would make sense if the assistant saw the rest of the code.`,
     messages: [
       {
         role: 'user',
-        content:
-          "Can you improve this code and answer only with the improved code (including comments)? I would want to prioritize readability and robustness, and also if possible improve the performance and structure:\n```\n{{user_code}}```. Do not include code that won't run in your answer, including markdown.",
+        content: `Can you improve this code and answer only with the improved code?
+          I would want to prioritize readability and robustness, and also if possible improve the performance and structure:
+          \`\`\`{{user_code}}\`\`\`.
+          Do not include "\`\`\`" in your answer.
+          Give me the code immediately in your response as I will replace my original code with it verbatim.`,
       },
     ],
     requestOptions: {
       type: 'chat',
       model: 'gpt-4',
-      max_tokens: -1,
       temperature: 0.7,
+      max_tokens: null,
       top_p: 1,
     },
     variables: [
