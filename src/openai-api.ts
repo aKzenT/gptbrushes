@@ -58,7 +58,7 @@ export async function requestCompletion(
   prompts: { role: 'system' | 'assistant' | 'user'; content: string }[],
   apiKey: string,
   cancelToken: vscode.CancellationToken,
-  options?: Partial<ConfigRequestOptions>
+  options: Partial<ConfigRequestOptions>
 ) {
   // Create an Axios cancellation token
   // eslint-disable-next-line import/no-named-as-default-member
@@ -71,13 +71,19 @@ export async function requestCompletion(
 
   // TODO Type should be able to be at least 'completion' | 'chat'
   // but now it's just 'chat' so we can ignore this.
-  if (options?.type) {
+  if (options.type) {
+    // Set it to undefined because it's not a real requestOption for openAI
     options.type = undefined
+  }
+
+  if (!options.max_tokens || options.max_tokens < 0) {
+    options.max_tokens = Infinity
   }
 
   const configuration = new Configuration({
     apiKey: apiKey,
   })
+
   const openai = new OpenAIApi(configuration)
 
   outputChannel.appendLine(`OpenAI request: ${JSON.stringify({ ...options, prompts })}`)
