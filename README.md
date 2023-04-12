@@ -32,7 +32,7 @@ Here is an example configuration:
   {
     "name": "Add comments",
     "icon": "💬",
-    "prompt": "Add code comments to the code send to the user."
+    "systemPrompt": "Add code comments to the code send to the user."
   }
 ]
 ```
@@ -45,10 +45,10 @@ You can ask for additional input from the user using variables:
 {
     "name": "Translate",
     "icon": "🌐",
-    "prompt": "Translate the text from the user to {{prompt}}",
+    "systemPrompt": "Translate the text from the user to {{prompt}}",
     "variables": [
         {
-            "name": "prompt",
+            "name": "systemPrompt",
             "defaultValue": "English",
             "description": "Please enter target language."
         }

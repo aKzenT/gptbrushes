@@ -4,18 +4,21 @@
   "publisher": "AkzenteIT",
   "displayName": "GPT4 Brushes",
   "description": "Custom Code Brushes using GPT-4",
-  "version": "1.1.1",
+  "version": "1.2.0",
   "repository": {
     "type": "git",
     "url": "https://github.com/aKzenT/gptbrushes/"
-  },  
+  },
   "icon": "assets/icon.png",
   "engines": {
-    "vscode": "^1.76.0"
+    "vscode": "^1.77.0"
   },
   "license": "MIT",
   "categories": [
     "Other"
+  ],
+  "extensionDependencies": [
+    "KatjanaKosic.vscode-json5"
   ],
   "activationEvents": [
     "onCommand:extension.gptbrushes"
@@ -35,159 +38,163 @@
       "gptbrushes": [
         {
           "id": "gptbrushes.brushList",
-          "name": "Brush List"
+          "name": "Brush List",
+          "contextualTitle": "GPT 4 Brushes"
         }
       ]
     },
+    "colors": [
+      {
+        "id": "getbrushes.brushList.treeItemTextForeground",
+        "description": "Color for a TreeItem label",
+        "defaults": {
+          "dark": "#fff",
+          "light": "#000",
+          "highContrast": "errorForeground"
+        }
+      }
+    ],
     "commands": [
       {
         "command": "gptbrushes.updateApiKey",
         "title": "GPT-4 Brushes: Update OpenAI API Key",
+        "category": "GPT-4 Brushes",
+        "icon": "assets/edit.svg"
+      },
+      {
+        "command": "gptbrushes.addBrush",
+        "title": "GPT-4 Brushes: Add brush",
+        "icon": "assets/add.svg",
+        "category": "GPT-4 Brushes",
+        "description": "Add a new brush"
+      },
+      {
+        "command": "gptbrushes.deleteBrush",
+        "title": "GPT-4 Brushes: Delete brush",
+        "icon": "assets/trash.svg",
+        "category": "GPT-4 Brushes"
+      },
+      {
+        "command": "gptbrushes.addCategory",
+        "title": "GPT-4 Brushes: Add category",
+        "icon": "assets/add.svg",
+        "category": "GPT-4 Brushes"
+      },
+      {
+        "command": "gptbrushes.deleteCategory",
+        "title": "GPT-4 Brushes: Delete category",
+        "icon": "assets/trash.svg",
+        "category": "GPT-4 Brushes"
+      },
+      {
+        "command": "gptbrushes.editCategory",
+        "title": "GPT-4 Brushes: Edit category",
+        "icon": "assets/edit.svg",
+        "category": "GPT-4 Brushes"
+      },
+      {
+        "command": "gptbrushes.editBrush",
+        "title": "GPT-4 Brushes: Edit",
+        "icon": "assets/edit.svg",
         "category": "GPT-4 Brushes"
       }
     ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "gptbrushes.addBrush",
+          "group": "navigation",
+          "when": "view == gptbrushes.brushList"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "gptbrushes.editBrush",
+          "when": "view == gptbrushes.brushList && viewItem == brush",
+          "group": "inline"
+        },
+        {
+          "command": "gptbrushes.deleteBrush",
+          "when": "view == gptbrushes.brushList && viewItem == brush",
+          "group": "inline"
+        },
+        {
+          "command": "gptbrushes.editCategory",
+          "when": "view == gptbrushes.brushList && viewItem == category",
+          "group": "inline"
+        },
+        {
+          "command": "gptbrushes.deleteCategory",
+          "when": "view == gptbrushes.brushList && viewItem == category",
+          "group": "inline"
+        },
+        {
+          "command": "gptbrushes.addBrush",
+          "group": "inline",
+          "when": "view == gptbrushes.brushList && viewItem == category"
+        }
+      ]
+    },
     "configuration": {
       "title": "GPT Brushes",
       "properties": {
-        "gptbrushes.openaiBasePath": {
-          "type": "string",
-          "default": "https://api.openai.com/v1",
-          "description": "OpenAI API base path to use for all requests"
+        "gptbrushes.syncConfig": {
+          "title": "Sync brushes and categories",
+          "type": "boolean",
+          "default": true,
+          "description": "Sync stored brushes and categories using your VSCode account"
         },
-        "gptbrushes.brushes": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "properties": {
-              "name": {
-                "type": "string",
-                "description": "Name of the brush"
-              },
-              "icon": {
-                "type": "string",
-                "description": "Emoji to display as the brush's icon"
-              },
-              "type": {
-                "type": "string",
-                "enum": [
-                  "gpt-4",
-                  "javascript"
-                ],
-                "default": "gpt-4",
-                "description": "Provider of the brush. Either GPT-4 or a Node.js script."
-              },
-              "prompt": {
-                "type": "string",
-                "description": "Prompt to be sent to the provider for this brush"
-              },
-              "variables": {
-                "type": "array",
-                "items": {
-                  "type": "object",
-                  "properties": {
-                    "name": {
-                      "type": "string",
-                      "description": "Name of the variable"
-                    },
-                    "defaultValue": {
-                      "type": "string",
-                      "description": "Default value of the variable"
-                    },
-                    "description": {
-                      "type": "string",
-                      "description": "Description of the variable"
-                    }
-                  },
-                  "required": [
-                    "name",
-                    "description"
-                  ]
-                },
-                "description": "Variables to be used in the prompt"
-              }
-            },
-            "required": [
-              "name",
-              "icon",
-              "prompt"
-            ]
-          },
-          "default": [
-            {
-              "name": "Add Comments",
-              "icon": "💬",
-              "prompt": "Please add code comments to the code."
-            },
-            {
-              "name": "Fix Bugs",
-              "icon": "🐞",
-              "prompt": "Identify and fix bugs in the code provided by the user. Answer directly with the fixed code. Do not use a markdown code block. You can add a code comment to explain the fix."
-            },
-            {
-              "name": "Add Types",
-              "icon": "🔠",
-              "prompt": "Please add type annotations to the code provided by the user."
-            },
-            {
-              "name": "Translate to German",
-              "icon": "🇩🇪",
-              "prompt": "Translate the user text to German."
-            },
-            {
-              "name": "Translate to English",
-              "icon": "🇬🇧",
-              "prompt": "Translate the user text to English."
-            },
-            {
-              "name": "Refactor Code",
-              "icon": "♻️",
-              "prompt": "Improve the user code by refactoring it."
-            },
-            {
-              "name": "Custom Brush",
-              "icon": "❓",
-              "prompt": "{{prompt}}",
-              "variables": [
-                {
-                  "name": "prompt",
-                  "description": "Please describe the brush."
-                }
-              ]
-            }
-          ],
-          "description": "The available brushes, including their names, icons, and prompts"
+        "gptbrushes.useJSON5": {
+          "title": "Use JSON 5",
+          "type": "boolean",
+          "default": false,
+          "description": "Use JSON 5 instead of YAML for configuration files"
         }
       }
     }
   },
   "scripts": {
-    "vscode:prepublish": "npm run package",
+    "vscode:prepublish": "pnpm run package",
     "compile": "webpack",
     "watch": "webpack --watch",
     "package": "webpack --mode production --devtool hidden-source-map",
     "compile-tests": "tsc -p . --outDir out",
     "watch-tests": "tsc -p . -w --outDir out",
+    "deploy:local": "pnpm vsce package --no-dependencies -o dist/gptbrushes.vsix && code --install-extension dist/gptbrushes.vsix --force",
     "pretest": "npm run compile-tests && npm run compile && npm run lint",
     "lint": "eslint src --ext ts",
-    "test": "node ./out/test/runTest.js"
+    "test": "node ./out/test/runTest.js",
+    "spell:check": "cspell \"{README.md,src/**/*.ts}\""
   },
   "devDependencies": {
+    "@types/axios": "^0.14.0",
     "@types/glob": "^8.1.0",
     "@types/mocha": "^10.0.1",
-    "@types/node": "16.x",
-    "@types/vscode": "^1.76.0",
-    "@typescript-eslint/eslint-plugin": "^5.56.0",
-    "@typescript-eslint/parser": "^5.56.0",
+    "@types/node": "^18.15.11",
+    "@types/vscode": "^1.77.0",
+    "@typescript-eslint/eslint-plugin": "^5.58.0",
+    "@typescript-eslint/parser": "^5.58.0",
     "@vscode/test-electron": "^2.3.0",
-    "eslint": "^8.36.0",
+    "axios": "^1.3.5",
+    "c8": "^7.13.0",
+    "cspell": "^6.31.1",
+    "eslint": "^8.38.0",
+    "eslint-config-prettier": "^8.8.0",
+    "eslint-import-resolver-typescript": "^3.5.5",
+    "eslint-plugin-eslint-comments": "^3.2.0",
+    "eslint-plugin-import": "^2.27.5",
+    "eslint-plugin-prettier": "^4.2.1",
     "glob": "^8.1.0",
     "mocha": "^10.2.0",
+    "prettier": "^2.8.7",
     "ts-loader": "^9.4.2",
     "typescript": "^4.9.5",
-    "webpack": "^5.76.3",
+    "webpack": "^5.78.0",
     "webpack-cli": "^5.0.1"
   },
   "dependencies": {
-    "openai": "^3.2.1"
+    "json5": "^2.2.3",
+    "openai": "^3.2.1",
+    "yaml": "^2.2.1"
   }
 }
