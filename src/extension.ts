@@ -24,17 +24,13 @@ export async function activate(context: vscode.ExtensionContext) {
   const brushTreeDataProvider = activateConfig(context, storageManager) // registers edit and delete commands
 
   if (!config.brushes.length) {
-    await vscode.window.showErrorMessage('No brushes in the config! Could not start extension.')
+    await vscode.window.showErrorMessage(
+      'No brushes in the config! Could not start extension. This should never happen, ever'
+    )
     return
   }
 
   activateApiKey(context)
-
-  const editor = vscode.window.activeTextEditor
-  if (!editor) {
-    await vscode.window.showErrorMessage('Please open a text editor to use GPT-4 Brushes.')
-    return
-  }
 
   const sel = activateSelectionHelper(context, storageManager)
 
