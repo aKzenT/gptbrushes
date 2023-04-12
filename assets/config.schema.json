@@ -70,8 +70,8 @@
     },
     "default": {
       "model": "gpt-4",
-      "temperature": 0.5,
-      "max_tokens": 500
+      "temperature": 0.6,
+      "max_tokens": -1
     }
   },
   "categories": {
