@@ -33,19 +33,46 @@ async function _saveSelection(storage: StorageService): Promise<void> {
     outputChannel.appendLine('Could not get editor')
     return
   }
-  outputChannel.appendLine(
-    `Selection saved: ${editor.document.getText(getSelectionRange(editor.selection))}`
-  )
-  if (!getSelectionRange(editor.selection).isEmpty) {
-    await storage.setValue('gptbrushes.current_selection', editor.selection)
-    SavedSelectionEvents.markSelectionChange(editor.selection)
+
+  const saved = _getSavedSelection(storage)
+  if (!editor.selection.isEmpty) {
+    if (!saved || !editor.selection.isEqual(getSelectionRange(saved))) {
+      await storage.setValue('gptbrushes.current_selection', editor.selection)
+      await storage.setValue('gptbrushes.current_selection_timestamp', Date.now())
+      SavedSelectionEvents.markSelectionChange(editor.selection)
+      outputChannel.appendLine(
+        `Selection saved: ${editor.document.getText(getSelectionRange(editor.selection))}`
+      )
+      return
+    }
+    SavedSelectionEvents.markSelectionChange(undefined)
   } else {
     await storage.setValue('gptbrushes.current_selection', undefined)
     SavedSelectionEvents.markSelectionChange(undefined)
   }
+  await storage.setValue('gptbrushes.current_selection', undefined)
 }
 
 function _getSavedSelection(storage: StorageService): undefined | vscode.Selection {
+  const editor = vscode.window.activeTextEditor
+
+  if (!editor) {
+    return undefined
+  }
+
+  const timestamp: number = storage.getValue<number>('gptbrushes.current_selection_timestamp') ?? -1
+  if (timestamp > 0) {
+    const now = Date.now()
+    // selection expires after 5 minutes
+    if (now - timestamp > 1000 * 60 * 5) {
+      void storage.setValue('gptbrushes.current_selection_timestamp', undefined)
+      void storage.setValue('gptbrushes.current_selection', undefined)
+      SavedSelectionEvents.markSelectionChange(undefined)
+      return undefined
+    }
+  }
+  SavedSelectionEvents.markSelectionChange(editor.selection)
+
   const savedSelection: vscode.Selection | undefined = storage.getValue<vscode.Selection>(
     'gptbrushes.current_selection'
   )
@@ -73,7 +100,7 @@ async function _insertAtCursor(selection: vscode.Selection, newText: string): Pr
   }
   // const document = editor.document
   await editor.edit((editBuilder) => {
-    editBuilder.insert(selection.start, newText)
+    editBuilder.insert(selection.anchor, newText)
   })
 }
 
@@ -119,7 +146,8 @@ export function activateSelectionHelper(
       return Promise.resolve()
     },
     insertOrReplace: async (selection: vscode.Selection, newText: string): Promise<void> => {
-      if (selection.isEmpty) {
+      const range = getSelectionRange(selection)
+      if (range.isEmpty) {
         await _insertAtCursor(selection, newText)
       } else {
         await _replaceSelection(selection, newText)

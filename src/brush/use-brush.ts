@@ -28,7 +28,7 @@ export function activateUseBrush(
   context.subscriptions.push(
     vscode.commands.registerCommand('gptbrushes.useBrush', async (id: string) => {
       try {
-        const originalSelections = editor.selections
+        const originalSelection = editor.selection
         let selection = editor.selection
 
         const brushToUse = getBrushes(storage).find((b: ConfigBrush) => {
@@ -207,9 +207,9 @@ export function activateUseBrush(
               outputChannel.appendLine(`Completion: ${completion}`)
 
               outputChannel.appendLine(
-                'Original selection:' + JSON.stringify(originalSelections[0], null, 2)
+                'Original selection:' + JSON.stringify(originalSelection, null, 2)
               )
-              await sel.insertOrReplace(originalSelections[0], completion)
+              await sel.insertOrReplace(originalSelection, completion)
 
               progress.report({ message: 'Brush applied.', increment: 100 })
 
