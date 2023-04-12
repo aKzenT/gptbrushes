@@ -15,8 +15,11 @@ export type ConfigRequestOptions = Partial<CreateChatCompletionRequest> &
   Partial<CreateCompletionRequest> & { model: string; type: 'chat' | 'completion' }
 
 export function getRequestOptions(
-  source: StorageService | Partial<ConfigRequestOptions>
+  source: StorageService | Partial<ConfigRequestOptions> | undefined
 ): ConfigRequestOptions | undefined {
+  if (!source) {
+    return defaults.requestOptions
+  }
   const cfg: Partial<ConfigRequestOptions> | undefined =
     'model' in source
       ? source
@@ -35,23 +38,7 @@ export function getRequestOptions(
     type = 'chat'
   }
 
-  const requestOptions: ConfigRequestOptions = {
-    type: type,
-    model: cfg.model ?? 'gpt-4',
-    max_tokens: cfg.max_tokens && cfg.max_tokens > 0 ? cfg.max_tokens : Infinity,
-    temperature: cfg.temperature ?? 0.8,
-    top_p: cfg.top_p ?? 1,
-    n: cfg.n,
-    stream: cfg.stream,
-    logprobs: cfg.logprobs,
-    echo: cfg.echo,
-    stop: cfg.stop,
-    presence_penalty: cfg.presence_penalty,
-    frequency_penalty: cfg.frequency_penalty,
-    best_of: cfg.best_of,
-    logit_bias: cfg.logit_bias ? cfg.logit_bias : undefined,
-    user: cfg.user,
-  }
+  const requestOptions = { ...defaults.requestOptions, ...cfg, type }
 
   return requestOptions
 }
@@ -152,9 +139,7 @@ function parseBrushes(
 
     const brush = maybeBrush as ConfigBrush
 
-    if (brush.requestOptions) {
-      parsed.requestOptions = getRequestOptions(brush.requestOptions)
-    }
+    parsed.requestOptions = getRequestOptions(brush.requestOptions)
 
     if (!brush.name || !brush.prompt) {
       const errMessage = `GPT-4 Brushes: Brush "${brush.name}" is missing a required property in the config.`
