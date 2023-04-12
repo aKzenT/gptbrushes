@@ -9,6 +9,7 @@ import path from 'path'
 // We should add config option to switch between these maybe?
 import YAML from 'yaml'
 import JSON5 from 'json5'
+import { hasField } from '../util/util'
 // eslint-disable-next-line import/no-extraneous-dependencies
 //import JSON5 from 'json5'
 
@@ -100,6 +101,7 @@ export async function getConfig(storage: StorageService): Promise<Config> {
   }
 
   let brushes = getBrushes(storage, categories)
+  outputChannel.appendLine('GPT-4 Brushes: brushes: ' + JSON.stringify(brushes))
   if (brushes.length === 0) {
     brushes = parseBrushes(defaults.brushes)
     await storage.setValue('gptbrushes.config.brushes', brushes)
@@ -226,9 +228,9 @@ export async function deleteBrush(
     (b) => !(b.name === brush.name && b.category === brush.category)
   )
 
-  if (brushes.length) {
-    await storage.setValue('gptbrushes.config.brushes', outputBrushes)
-  }
+  await deleteFormattedConfig(storage, { source: brush })
+
+  await storage.setValue('gptbrushes.config.brushes', outputBrushes)
 }
 
 export function getCategories(storage: StorageService): ConfigBrushCategory[] {
@@ -313,6 +315,7 @@ export async function saveRequestOptions(
   requestOptions: ConfigRequestOptions | undefined,
   storage: StorageService
 ) {
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
   if (!requestOptions?.model || !requestOptions.type) {
     void vscode.window.showErrorMessage('Request options are missing required properties.')
     return
@@ -391,11 +394,12 @@ function getConfigFromKey<T extends AnyConfigOpt>(
   _key: string | { source: T },
   storage: StorageService
 ):
-  | { allContents: undefined; content: undefined; saveContent: undefined }
+  | { allContents: undefined; content: undefined; saveContent: undefined; deleteContent: undefined }
   | {
       allContents: T[] | undefined
       content: T | undefined
-      saveContent: (saveContent: T) => Promise<void | { success: boolean }>
+      saveContent: (content: T) => Promise<void> | Promise<{ success: boolean }>
+      deleteContent: (content: T) => Promise<void> | Promise<{ success: boolean }>
     } {
   const key = getKeyFromSource(_key)
 
@@ -404,13 +408,19 @@ function getConfigFromKey<T extends AnyConfigOpt>(
     void vscode.window.showErrorMessage(
       'Invalid key. Key must be in the format of `category.<name>`, `brush.<category>.<name>` or `requestOptions`'
     )
-    return { allContents: undefined, content: undefined, saveContent: undefined }
+    return {
+      allContents: undefined,
+      content: undefined,
+      saveContent: undefined,
+      deleteContent: undefined,
+    }
   }
 
   let allContents: T[] | undefined
   let content: T | undefined = undefined
 
-  let saveContent: (saveContent: T) => Promise<void | { success: boolean }>
+  let saveContent: (content: T) => Promise<void> | Promise<{ success: boolean }>
+  let deleteContent: (content: T) => Promise<void> | Promise<{ success: boolean }>
 
   switch (type) {
     case 'category': {
@@ -422,6 +432,9 @@ function getConfigFromKey<T extends AnyConfigOpt>(
 
       saveContent = async (_category) =>
         await saveCategory(_category as ConfigBrushCategory, storage)
+      deleteContent = async (_category) =>
+        await deleteCategory((_category as ConfigBrushCategory).name, storage)
+
       break
     }
     case 'brush': {
@@ -432,20 +445,35 @@ function getConfigFromKey<T extends AnyConfigOpt>(
       saveContent = async (brush) => {
         return await saveBrush(brush as ConfigBrush, storage, allContents as ConfigBrush[])
       }
+      deleteContent = async (brush) => {
+        if (hasField<string | undefined>(brush, 'name', 'string')) {
+          outputChannel.appendLine(`Deleting brush ${brush.name ?? ''}...`)
+        }
+        return await deleteBrush(brush as ConfigBrush, storage, allContents as ConfigBrush[])
+      }
       content = (brush as T | undefined) ?? (typeof _key !== 'string' ? _key.source : undefined)
       break
     }
     case 'requestOptions': {
       content = getRequestOptions(storage) as T
-      saveContent = async (requestOptions) =>
-        await saveRequestOptions(requestOptions as ConfigRequestOptions, storage)
+      saveContent = async (requestOptions) => {
+        return await saveRequestOptions(requestOptions as ConfigRequestOptions, storage)
+      }
+
+      deleteContent = async () => await saveRequestOptions(undefined, storage)
+
       break
     }
     default:
-      return { allContents: undefined, content: undefined, saveContent: undefined }
+      return {
+        allContents: undefined,
+        content: undefined,
+        saveContent: undefined,
+        deleteContent: undefined,
+      }
   }
 
-  return { allContents, content, saveContent }
+  return { allContents, content, saveContent, deleteContent }
 }
 
 const editorState: {
@@ -453,16 +481,51 @@ const editorState: {
   doc?: unknown
 } = { save: undefined, doc: undefined }
 
+// I want to use this later so that JSON5 looks better for default configs but obviously not prioritized
+// Another option would be to save default formatted configs also instead of just stringifying.
+/*const wordWrap = (s: string, w: number, sourceNewLine: string, outNewLine: string) =>
+  s
+    .replace(
+      new RegExp(
+        `(?![^${'\\' + sourceNewLine}]{1,${w}}$)([^${'\\' + sourceNewLine}]{1,${w}})\\s`,
+        'g'
+      ),
+      '$1' + outNewLine
+    )
+    .replace(new RegExp(`\\${outNewLine}\\s`, 'g'), outNewLine)*/
+
 export function getFormatter() {
   const useJSON5 = vscode.workspace.getConfiguration('gptbrushes').get<boolean>('useJSON5', false)
 
-  const stringify: (val: AnyConfigOpt, r: null, s: 2) => string = useJSON5
+  outputChannel.appendLine(`Using ${useJSON5 ? 'JSON5' : 'YAML'} formatter`)
+
+  const _stringify: (val: AnyConfigOpt, r: null, s: 2) => string = useJSON5
     ? JSON5.stringify
     : YAML.stringify
 
-  const parse: <T>(v: string) => T = useJSON5 ? JSON5.parse : YAML.parse
+  const stringify = (val: AnyConfigOpt) => _stringify(val, null, 2)
 
-  return { stringify, parse }
+  const parse: <T>(v: string) => T = useJSON5 ? JSON5.parse : YAML.parse
+  const otherParser: <T>(v: string) => T = useJSON5 ? YAML.parse : JSON5.parse
+
+  const tryParse = (
+    content: string | undefined
+  ): { parsed: AnyConfigOpt; text: string | 'null' } => {
+    let parsed: AnyConfigOpt
+    try {
+      parsed = parse(content ?? '')
+    } catch (e) {
+      try {
+        parsed = otherParser(content ?? '')
+        content = stringify(parsed)
+      } catch (z) {
+        throw e
+      }
+    }
+    return { parsed: parsed, text: content ?? 'null' }
+  }
+
+  return { tryParse, stringify, parse, otherParser, formatter: useJSON5 ? 'json5' : 'yaml' }
 }
 
 export async function saveFormattedConfig(
@@ -475,12 +538,27 @@ export async function saveFormattedConfig(
   await storage.setValue(key + '.formatted', value)
 }
 
+export async function deleteFormattedConfig(
+  storage: StorageService,
+  _key: string | { source: AnyConfigOpt }
+) {
+  const key = getKeyFromSource(_key)
+
+  await storage.setValue(key + '.formatted', undefined)
+}
+
 export function loadFormattedConfig(
   storage: StorageService,
   _key: string | { source: AnyConfigOpt }
 ): string | undefined {
   const key = getKeyFromSource(_key)
   return storage.getValue<string>(key + '.formatted')
+}
+
+export function deleteAllConfig(storage: StorageService) {
+  void storage.setValue('gptbrushes.config.brushes', undefined)
+  void storage.setValue('gptbrushes.config.categories', undefined)
+  void storage.setValue('gptbrushes.config.requestOptions', undefined)
 }
 
 export function activateConfig(
@@ -491,39 +569,49 @@ export function activateConfig(
 ): BrushTreeDataProvider {
   const brushTreeDataProvider = new BrushTreeDataProvider(storage, brushes, categories)
 
+  //deleteAllConfig(storage)
+
   const editConfigCommand = vscode.commands.registerCommand(
     'gptbrushes.config.edit',
     (key: { source: AnyConfigOpt }) => {
-      const temporaryFilePath = path.join(__dirname, '.gptbrushtemp.yaml')
-
-      outputChannel.appendLine(
-        `Should save config soon, Editor state: ${JSON.stringify(editorState, null, 2)})`
-      )
-
       const formatter = getFormatter()
+
+      const temporaryFilePath = path.join(__dirname, `.gptbrushtemp.${formatter.formatter}`)
+
+      const config = getConfigFromKey<AnyConfigOpt>(key, storage)
+
+      let content = config.content
+
+      let stringContent: string
+      const savedStringContent = loadFormattedConfig(storage, { source: content })
 
       // If the values in our formatted config are the same as the current config
       // then we can use the formatted config as the current config
-      const { content, saveContent } = getConfigFromKey<AnyConfigOpt>(key, storage)
-      let stringContent: string
-      const savedStringContent = loadFormattedConfig(storage, { source: content })
-      if (
-        savedStringContent &&
-        JSON.stringify(formatter.parse(savedStringContent)) === JSON.stringify(content)
-      ) {
-        stringContent = savedStringContent
-      } else {
-        stringContent = formatter.stringify(content, null, 2)
+
+      try {
+        const _formatted = formatter.tryParse(savedStringContent)
+        stringContent = _formatted.text !== 'null' ? _formatted.text : formatter.stringify(content)
+        content = _formatted.parsed ?? content // not sure about this line, maybe don't have to change content?
+        void saveFormattedConfig(storage, key, stringContent)
+      } catch (e) {
+        void vscode.window.showErrorMessage(
+          `Error while trying to stringify or load stringified config: ${JSON.stringify(
+            e,
+            null,
+            2
+          )}`
+        )
+        outputChannel.appendLine(`Error: ${JSON.stringify(e, null, 2)}`)
+        return
       }
 
-      const hasMaxTokens = (v: unknown): v is { max_tokens: number } => {
-        if (!!v && typeof v === 'object' && 'max_tokens' in Object.keys(v)) {
-          return true
-        }
-        return false
+      let originalName: string | undefined
+
+      if (hasField<string>(content, 'name', 'string')) {
+        originalName = content.name
       }
 
-      if (hasMaxTokens(content)) {
+      if (hasField(content, 'max_tokens', 'number')) {
         if (content.max_tokens === Infinity) {
           content.max_tokens = -1
         } else if (String(content.max_tokens) === 'Infinity') {
@@ -532,7 +620,7 @@ export function activateConfig(
       }
 
       // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-      if (!content || !saveContent) {
+      if (!content || !config.saveContent) {
         void vscode.window.showErrorMessage(
           `Invalid config key for the gptbrushes.config.edit command: ${getIdFromItemSource(
             key.source as BrushTreeItemSource
@@ -545,7 +633,7 @@ export function activateConfig(
         fs.writeFileSync(temporaryFilePath, stringContent)
       } catch (e) {
         void vscode.window.showErrorMessage(
-          `Error when stringifying YAML: ${JSON.stringify(e, null, 2)}`
+          `Error when stringifying config: ${JSON.stringify(e, null, 2)}`
         )
         return
       }
@@ -562,18 +650,50 @@ export function activateConfig(
           const newContentString = doc.getText()
 
           let newContent: AnyConfigOpt
+
+          outputChannel.appendLine(`newContentString: ${newContentString}`)
+
           try {
-            newContent = await formatter.parse(newContentString)
+            const formatted = formatter.tryParse(newContentString)
+            newContent = formatted.parsed
           } catch (e) {
             void vscode.window.showErrorMessage(
-              `Error when parsing YAML/JSON: ${JSON.stringify(e, null, 2)}`
+              `Error when parsing config: ${JSON.stringify(e, null, 2)}`
             )
             return
           }
 
           await saveFormattedConfig(storage, { source: newContent }, newContentString)
+          await config.saveContent(newContent)
 
-          void saveContent(newContent)
+          if (
+            originalName &&
+            hasField(newContent, 'name', 'string') &&
+            originalName !== newContent.name
+          ) {
+            await config.deleteContent(content)
+            await deleteFormattedConfig(storage, { source: content })
+            //brushTreeDataProvider.refresh()
+            outputChannel.appendLine(
+              'Deleting:' +
+                originalName +
+                ' (now: ' +
+                // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+                ((newContent as any).name as string)
+            )
+          } else {
+            outputChannel.appendLine(
+              'Not deleting:' +
+                // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+                ((content as any).name as string) +
+                ' (now: ' +
+                // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+                ((newContent as any).name as string) +
+                ') because of hasField name on newContent?: ' +
+                String(hasField(newContent, 'name', 'string'))
+            )
+          }
+
           await doc.save()
           setTimeout(() => {
             outputChannel.appendLine(
