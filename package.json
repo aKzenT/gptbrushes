@@ -100,13 +100,6 @@
       }
     ],
     "menus": {
-      "view/title": [
-        {
-          "command": "gptbrushes.addBrush",
-          "group": "navigation",
-          "when": "view == gptbrushes.brushList"
-        }
-      ],
       "view/item/context": [
         {
           "command": "gptbrushes.editBrush",
