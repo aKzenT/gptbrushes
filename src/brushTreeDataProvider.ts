@@ -6,7 +6,7 @@ export class BrushTreeDataProvider implements vscode.TreeDataProvider<BrushItem>
 
   private brushes?: Brush[] = undefined;
 
-  constructor() {}
+  constructor() { }
 
   refresh(): void {
     this.brushes = undefined;
@@ -22,18 +22,40 @@ export class BrushTreeDataProvider implements vscode.TreeDataProvider<BrushItem>
       return Promise.resolve([]);
     } else {
       const result = this.brushes ??= (await vscode.commands.executeCommand('gptbrushes.getBrushes') as Brush[]);
-        return result.map(brush => new BrushItem(brush));
+      return result.map(brush => new BrushItem(brush));
     }
   }
 }
 
 class BrushItem extends vscode.TreeItem {
-  constructor(brush: Brush) {
-    super(`${brush.icon} ${brush.name}`, vscode.TreeItemCollapsibleState.None);
+  constructor(private brush: Brush) {
+    super(`${brush.name}`, vscode.TreeItemCollapsibleState.None);
     this.command = {
       command: `gptbrushes.useBrush`,
       title: 'Use Brush',
       arguments: [brush],
     };
+    this.iconPath = this.getIconPath();
+  }
+
+  getIconPath(): vscode.Uri | vscode.ThemeIcon {
+    if (/^[a-z0-9-]+$/i.test(this.brush.icon)) {
+      return new vscode.ThemeIcon(this.brush.icon);
+    }
+    else {
+      const emojiSvg = `<svg width="32" height="32" xmlns="http://www.w3.org/2000/svg" >
+    <style>
+      .text {
+        font: normal 24px sans-serif;
+      }
+    </style>
+  
+    <text x="0" y="24" class="text">${this.brush.icon}</text>
+  </svg>`.replace(/\s+/g, ' ');
+      return vscode.Uri.from({
+        scheme: "data",
+        path: 'image/svg+xml;utf8,' + emojiSvg
+      });
+    }
   }
 }

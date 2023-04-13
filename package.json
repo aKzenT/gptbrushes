@@ -65,7 +65,7 @@
               },
               "icon": {
                 "type": "string",
-                "description": "Emoji to display as the brush's icon"
+                "description": "Brush icon to show, can either be a ThemeIcon/codicon Id or an Emoji"
               },
               "type": {
                 "type": "string",
@@ -115,37 +115,37 @@
           "default": [
             {
               "name": "Add Comments",
-              "icon": "💬",
+              "icon": "comment",
               "prompt": "Please add code comments to the code."
             },
             {
               "name": "Fix Bugs",
-              "icon": "🐞",
+              "icon": "bug",
               "prompt": "Identify and fix bugs in the code provided by the user. Answer directly with the fixed code. Do not use a markdown code block. You can add a code comment to explain the fix."
             },
             {
               "name": "Add Types",
-              "icon": "🔠",
+              "icon": "symbol-type-parameter",
               "prompt": "Please add type annotations to the code provided by the user."
             },
             {
               "name": "Translate to German",
-              "icon": "🇩🇪",
+              "icon": "symbol-text",
               "prompt": "Translate the user text to German."
             },
             {
               "name": "Translate to English",
-              "icon": "🇬🇧",
+              "icon": "symbol-text",
               "prompt": "Translate the user text to English."
             },
             {
               "name": "Refactor Code",
-              "icon": "♻️",
+              "icon": "tools",
               "prompt": "Improve the user code by refactoring it."
             },
             {
               "name": "Custom Brush",
-              "icon": "❓",
+              "icon": "question",
               "prompt": "{{prompt}}",
               "variables": [
                 {
