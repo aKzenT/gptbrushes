@@ -2,16 +2,9 @@
 // Type Definition for Visual Studio Code 1.76 Extension API See https://code.visualstudio.com/api for more information
 import vscode from 'vscode'
 // The fix to the issue
-import {
-  ConfigBrush,
-  ConfigBrushCategory,
-  ConfigRequestOptions,
-  getBrushes,
-  getCategories,
-} from '../config/config'
+import { ConfigBrush, ConfigBrushCategory, getBrushes, getCategories } from '../config/config'
 export { ConfigBrush }
-import { outputChannel } from '../util/channel'
-import { brushTemplate, brushes, categories } from '../config/config-defaults'
+import { brushTemplate } from '../config/config-defaults'
 import { StorageService } from 'util/storage'
 
 // The issue with the below class is that I for some reason can't get the tree list items to have children.
@@ -199,8 +192,6 @@ export const getIdFromItemSource = (source: BrushTreeItemSource): string => {
     source.name
   )
 }
-
-type IconType = string | vscode.ThemeIcon | vscode.Uri | { light: vscode.Uri; dark: vscode.Uri }
 
 class BrushTreeItem<T extends BrushTreeItemSource>
   extends vscode.TreeItem

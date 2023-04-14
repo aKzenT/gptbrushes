@@ -9,7 +9,7 @@ import path from 'path'
 // We should add config option to switch between these maybe?
 import YAML from 'yaml'
 import JSON5 from 'json5'
-import { hasField } from '../util/util'
+import { hasField } from '../util'
 // eslint-disable-next-line import/no-extraneous-dependencies
 //import JSON5 from 'json5'
 
@@ -356,7 +356,12 @@ export async function askForVariables(
       }
 
       if (input === '') {
-        if (variable.defaultValue === undefined) {
+        void vscode.window.showWarningMessage(
+          `GPT-4 Brushes: Variable "${variable.name}" was set to the default: "${String(
+            variable.defaultValue
+          )}".`
+        )
+        if (typeof variable.defaultValue === 'undefined') {
           return undefined
         }
         input = variable.defaultValue

@@ -61,3 +61,8 @@ export const hasField = <V>(
   }
   return false
 }
+
+// https://stackoverflow.com/a/6969486
+export const escapeRegExp = (string: string): string => {
+  return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') // $& means the whole matched string
+}

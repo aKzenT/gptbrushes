@@ -6,6 +6,7 @@ import { getApiKey, requestCompletion } from '../openai-api'
 import { SelectionHelper } from '../util/selection'
 import { requestOptions } from '../config/config-defaults'
 import { StorageService } from '../util/storage'
+import { escapeRegExp } from '../util'
 
 export function getSelectionRange(selection: vscode.Selection) {
   const selectionRange = new vscode.Range(
@@ -74,20 +75,19 @@ export function activateUseBrush(
           return
         }
 
-        outputChannel.appendLine(
-          `Using selection ${selection.start.line}:${selection.start.character} - ${selection.end.line}:${selection.end.character}`
-        )
 
         const selectedText = editor.document.getText(getSelectionRange(selection))
 
-        if (!selectedText) {
+        outputChannel.appendLine(
+          `Using selection:\n${JSON.stringify(selection)}\n\nWith selection text: ${selectedText}\n`
+        )
+
+        if (!selectedText.trim()) {
           await vscode.window.showErrorMessage('Please select some text to use GPT-4 Brushes.')
           return
         }
 
         const originalVersion = editor.document.version
-
-        outputChannel.appendLine(`Using selected text ${selectedText}`)
 
         const variables = brushToUse.variables
 
@@ -119,12 +119,19 @@ export function activateUseBrush(
         for (const prompt of prompts) {
           if (['system', 'assistant', 'user'].includes(prompt.role) && prompt.content) {
             if (prompt.role === 'user') {
-              prompt.content = prompt.content.replace(/{{user_code}}/g, selectedText)
+              prompt.content = prompt.content.replace(/\{\{user_code\}\}/g, selectedText)
             }
 
             if (variablesRes) {
               for (const v of variablesRes) {
-                prompt.content = prompt.content.replace(new RegExp(`/{{${v.name}}}/g`), v.value)
+                const oldContent = prompt.content
+                prompt.content = prompt.content.replace(
+                  new RegExp(`\\{\\{${escapeRegExp(v.name)}\\}\\}`, 'g'),
+                  v.value
+                )
+                outputChannel.appendLine(
+                  `Replaced role: ${prompt.role} content: ${prompt.content}, oldContent: ${oldContent}, variable: ${v.name}, value: ${v.value}`
+                )
               }
             }
           }

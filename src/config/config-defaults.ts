@@ -87,6 +87,13 @@ export const brushes: (Omit<ConfigBrush, 'category'> & { category?: string })[] 
     prompt: 'Please add type annotations to the code provided by the user.',
   },
   {
+    name: 'Answer comments',
+    category: 'Explain',
+    icon: 'comment',
+    prompt:
+      "Assistant answer's the user's comments. The user's comments are provided inside of code. Assistant outputs the full unmodified code but with the questions inside of comments replaced to answers within comments.",
+  },
+  {
     name: 'Translate to German',
     icon: 'case-sensitive',
     category: 'Conventions and style',

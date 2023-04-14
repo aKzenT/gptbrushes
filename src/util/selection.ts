@@ -34,23 +34,54 @@ async function _saveSelection(storage: StorageService): Promise<void> {
     return
   }
 
-  const saved = _getSavedSelection(storage)
-  if (!editor.selection.isEmpty) {
-    if (!saved || !editor.selection.isEqual(getSelectionRange(saved))) {
-      await storage.setValue('gptbrushes.current_selection', editor.selection)
-      await storage.setValue('gptbrushes.current_selection_timestamp', Date.now())
-      SavedSelectionEvents.markSelectionChange(editor.selection)
-      outputChannel.appendLine(
-        `Selection saved: ${editor.document.getText(getSelectionRange(editor.selection))}`
-      )
+  const saveSelection = async (selection?: vscode.Selection, date?: number) => {
+    if (!selection) {
+      await storage.setValue('gptbrushes.current_selection', undefined)
+      SavedSelectionEvents.markSelectionChange(undefined)
+      await storage.setValue('gptbrushes.current_selection_timestamp', undefined)
       return
     }
-    SavedSelectionEvents.markSelectionChange(undefined)
-  } else {
-    await storage.setValue('gptbrushes.current_selection', undefined)
-    SavedSelectionEvents.markSelectionChange(undefined)
+    if (!date) {
+      date = Date.now()
+    }
+    await storage.setValue('gptbrushes.current_selection', selection)
+    await storage.setValue('gptbrushes.current_selection_timestamp', date)
+    SavedSelectionEvents.markSelectionChange(selection)
+    return
   }
-  await storage.setValue('gptbrushes.current_selection', undefined)
+
+  const saved = _getSavedSelection(storage)
+  const range = getSelectionRange(editor.selection)
+
+  let text: string
+
+  if (!range.isEmpty) {
+    text = editor.document.getText(range)
+  } else {
+    text = ''
+  }
+
+  if (!saved) {
+    if (text.trim().length) {
+      await saveSelection(editor.selection)
+    } else {
+      await saveSelection(undefined)
+    }
+
+    return
+  }
+
+  const savedRange = getSelectionRange(saved)
+
+  if (!range.isEmpty) {
+    const savedText = editor.document.getText(savedRange).trim()
+    if (savedText !== text.trim() && range !== savedRange) {
+      await saveSelection(editor.selection)
+      return
+    }
+  }
+
+  await saveSelection(undefined)
 }
 
 function _getSavedSelection(storage: StorageService): undefined | vscode.Selection {
@@ -133,7 +164,6 @@ export function activateSelectionHelper(
 ): SelectionHelper {
   context.subscriptions.push(
     vscode.commands.registerCommand('gptbrushes.saveSelection', () => {
-      outputChannel.appendLine('saving selection')
       void _saveSelection(storage)
     })
   )
