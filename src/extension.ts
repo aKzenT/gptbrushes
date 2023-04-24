@@ -71,6 +71,14 @@ export function activate(context: vscode.ExtensionContext) {
   });
 
   context.subscriptions.push(
+    vscode.workspace.onDidChangeConfiguration((ev) => {
+      if (ev.affectsConfiguration('gptbrushes.brushes')) {
+        brushDataProvider.refresh();
+      }
+    })
+  );
+
+  context.subscriptions.push(
     vscode.commands.registerCommand('gptbrushes.getBrushes', async () => {
       const brushes = vscode.workspace.getConfiguration('gptbrushes').get<Partial<Brush>[] | undefined>('brushes') ?? [];
       brushes.forEach((brush) => (brush.type ??= 'gpt-4'));
