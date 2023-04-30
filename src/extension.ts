@@ -173,6 +173,7 @@ export function activate(context: vscode.ExtensionContext) {
         try {
           progress.report({ message: 'Applying Brush...' });
 
+          await vscode.commands.executeCommand('workbench.action.files.saveWithoutFormatting');
           const completion = await vscode.commands.executeCommand<string | undefined>('gptbrushes.providers.' + brush.type + '.apply', new BrushInvocation(brush, selectedText, cancelToken, progress));
 
           if (editor.document.version !== originalVersion) {
@@ -189,6 +190,7 @@ export function activate(context: vscode.ExtensionContext) {
           }
 
           await editor.edit((editBuilder) => editBuilder.replace(originalSelection, completion));
+          await vscode.commands.executeCommand('workbench.files.action.compareWithSaved');
           progress.report({ message: 'Brush applied.' });
         } catch (error) {
           if (cancelToken.isCancellationRequested) {
